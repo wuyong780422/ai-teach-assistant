@@ -16,14 +16,14 @@ col1, col2 = st.columns(2)
 with col1:
     # 纯视觉橙色按钮，不可点击，仅展示
     st.markdown('''
-    <div style="width:80%;background:#ff4b4b;color:white;border:none;padding:20px;border-radius:4px;font-size:40px;text-align:center;">教师入口</div>
+    <div style="width:100%;background:#ff4b4b;color:white;border:none;padding:20px;border-radius:4px;font-size:40px;text-align:center;">教师入口</div>
     ''', unsafe_allow_html=True)
     # 官方原生跳转，100%稳定不会空白
     st.page_link("pages/00_教师入口首页.py", label="点击进入教师功能", use_container_width=True)
 
 with col2:
     st.markdown('''
-    <div style="width:80%;background:#2da44e;color:white;border:none;padding:20px;border-radius:4px;font-size:40px;text-align:center;">学生入口</div>
+    <div style="width:100%;background:#2da44e;color:white;border:none;padding:20px;border-radius:4px;font-size:40px;text-align:center;">学生入口</div>
     ''', unsafe_allow_html=True)
 
 # 底部留白
