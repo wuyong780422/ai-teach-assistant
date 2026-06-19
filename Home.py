@@ -22,9 +22,13 @@ with col1:
     st.page_link("pages/00_教师入口首页.py", label="点击进入教师功能", use_container_width=True)
 
 with col2:
-    st.markdown('''
-    <div style="width:100%;background:#2da44e;color:white;border:none;padding:20px;border-radius:4px;font-size:40px;text-align:center;">学生入口</div>
-    ''', unsafe_allow_html=True)
+    st.markdown(
+        '''
+        <div style="width:100%;background:#2da44e;color:white;border:none;padding:20px;border-radius:4px;font-size:40px;text-align:center;">学生入口</div>
+        ''',
+        unsafe_allow_html=True
+    )
+    st.page_link("pages/02_学生验证登录.py", label="点击进入学生验证页面", use_container_width=True)
 
 # 底部留白
 st.markdown("<br><br><br><br><br><br><br><br><br><br><br><br>", unsafe_allow_html=True)
