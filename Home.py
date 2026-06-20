@@ -8,7 +8,7 @@ st.set_page_config(
 )
 
 st.markdown("""
-<h1 style="text-align:center; color:#2c5282; margin-top:60px; margin-bottom:50px; font-size:32px;">民族地区中职数学“文化-技术”融合教学案例</h1>
+<h1 style="text-align:center; color:#2c5282; margin-top:2px; margin-bottom:5px; font-size:32px;">民族地区中职数学“文化-技术”融合教学</h1>
 """, unsafe_allow_html=True)
 st.divider()
 
@@ -31,7 +31,7 @@ with col2:
     st.page_link("pages/02_学生验证登录.py", label="点击进入学生验证页面", use_container_width=True)
 
 # 底部留白
-st.markdown("<br><br><br><br><br><br><br><br><br><br><br><br>", unsafe_allow_html=True)
+st.markdown("<br><br>", unsafe_allow_html=True)
 # 底部备注
 st.markdown("""
 <div style="text-align:center; font-size:15px; color:#666; border-top:1px solid #eee; padding-top:20px;text-align:center;">
