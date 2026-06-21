@@ -295,3 +295,7 @@ if submit_btn:
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             use_container_width=True
         )
+
+# 返回教师首页
+st.divider()
+st.page_link("pages/00_教师入口首页.py", label="← 返回教师入口功能", use_container_width=True)
