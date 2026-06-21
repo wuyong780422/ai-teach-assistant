@@ -1,13 +1,12 @@
 import streamlit as st
-from data_tools import get_all_class, add_student, check_class_code
 import pandas as pd
 import os
+from data_tools import get_class_all_info, add_student, get_students_by_class
 
-st.set_page_config(page_title="学生登录", layout="centered", initial_sidebar_state="collapsed")
-st.markdown("<h1 style='text-align:center;'>学生入口验证</h1>", unsafe_allow_html=True)
+st.set_page_config(page_title="学生验证登录", layout="centered", initial_sidebar_state="collapsed")
+st.markdown("<h1 style='text-align:center;'>学生验证登录</h1>", unsafe_allow_html=True)
 st.divider()
 
-# 会话缓存初始化
 if "stu_name" not in st.session_state:
     st.session_state.stu_name = ""
 if "stu_class" not in st.session_state:
@@ -16,7 +15,6 @@ if "stu_class" not in st.session_state:
 SCORE_CSV = "score_data.csv"
 ENCODING = "utf-8-sig"
 
-# 根据试卷id判断是否完成作答
 def is_test_finished(name, cls, test_id):
     if not os.path.exists(SCORE_CSV):
         return False
@@ -30,7 +28,7 @@ def is_test_finished(name, cls, test_id):
     match = df[(df["student_name"] == target_name) & (df["class_name"] == target_cls) & (df["test_id"] == test_id)]
     return len(match) > 0
 
-class_list = get_all_class()
+class_list = list(get_class_all_info().keys())
 pass_flag = False
 test1_finish = False
 test2_finish = False
@@ -41,16 +39,17 @@ else:
     select_class = st.selectbox("选择你的班级", class_list)
     input_code = st.text_input("输入班级4位验证码")
     stu_name = st.text_input("输入你的姓名")
-    if st.button("进入学生页面"):
+    if st.button("加入班级"):
         input_code_clean = input_code.strip()
         stu_name_clean = stu_name.strip()
         if input_code_clean == "" or stu_name_clean == "":
             st.warning("验证码和姓名均不能为空！")
         else:
-            if not check_class_code(select_class, input_code_clean):
+            correct_code = str(get_class_all_info()[select_class])
+            if input_code_clean != correct_code:
                 st.error("验证码错误，请核对班级验证码！")
             else:
-                flag, msg = add_student(stu_name_clean, select_class)
+                flag, msg = add_student(select_class, stu_name_clean)
                 st.session_state.stu_name = stu_name_clean
                 st.session_state.stu_class = select_class
                 if flag:
@@ -58,15 +57,12 @@ else:
                 else:
                     st.warning(msg)
                 pass_flag = True
-                # 分别查询两套试卷完成状态
                 test1_finish = is_test_finished(stu_name_clean, select_class, "test1")
                 test2_finish = is_test_finished(stu_name_clean, select_class, "test2")
 
 if pass_flag:
     st.divider()
     st.subheader("在线测试功能")
-
-    # ========== 测试一 布局（和你截图样式完全一致） ==========
     col_btn1, col_tag1 = st.columns([8, 2])
     with col_btn1:
         with st.container(height=90):
@@ -79,10 +75,7 @@ if pass_flag:
                 st.success("已测试")
             else:
                 st.info("未测试")
-
-    st.write("") # 空行分隔两套试卷
-
-    # ========== 测试二 同逻辑同布局 ==========
+    st.write("")
     col_btn2, col_tag2 = st.columns([8, 2])
     with col_btn2:
         with st.container(height=90):
