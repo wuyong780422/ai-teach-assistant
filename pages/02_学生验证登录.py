@@ -3,7 +3,7 @@ import pandas as pd
 import os
 import datetime
 from data_tools import get_class_all_info, add_student, get_class_papers, is_paper_finished, get_class_tasks, \
-    get_class_resources, TASK_FILE_DIR, RESOURCE_FILE_DIR
+    get_class_resources, set_student_group, TASK_FILE_DIR, RESOURCE_FILE_DIR
 
 st.set_page_config(page_title="学生验证登录", layout="centered", initial_sidebar_state="collapsed")
 st.markdown("<h1 style='text-align:center;'>学生验证登录</h1>", unsafe_allow_html=True)
@@ -32,10 +32,13 @@ else:
     select_class = st.selectbox("选择你的班级", class_list)
     input_code = st.text_input("输入班级4位验证码")
     stu_name = st.text_input("输入你的姓名")
+    group_input = st.text_input("小组编号（选填，如1/2/3）", placeholder="不修改则留空")
 
     if st.button("加入班级"):
         input_code_clean = input_code.strip()
         stu_name_clean = stu_name.strip()
+        group_clean = group_input.strip()
+
         if input_code_clean == "" or stu_name_clean == "":
             st.warning("验证码和姓名均不能为空！")
         else:
@@ -46,6 +49,11 @@ else:
                 flag, msg = add_student(select_class, stu_name_clean)
                 st.session_state.stu_name = stu_name_clean
                 st.session_state.stu_class = select_class
+
+                # 填写了小组号则自动更新组别
+                if group_clean != "":
+                    set_student_group(select_class, stu_name_clean, group_clean)
+
                 if flag:
                     st.success(f"{stu_name_clean}，验证通过，已加入{select_class}！")
                 else:
