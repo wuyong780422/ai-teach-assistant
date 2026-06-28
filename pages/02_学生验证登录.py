@@ -3,7 +3,7 @@ import pandas as pd
 import os
 import datetime
 from data_tools import get_class_all_info, add_student, get_class_papers, is_paper_finished, get_class_tasks, \
-    TASK_FILE_DIR
+    get_class_resources, TASK_FILE_DIR, RESOURCE_FILE_DIR
 
 st.set_page_config(page_title="学生验证登录", layout="centered", initial_sidebar_state="collapsed")
 st.markdown("<h1 style='text-align:center;'>学生验证登录</h1>", unsafe_allow_html=True)
@@ -22,8 +22,9 @@ ENCODING = "utf-8-sig"
 class_list = list(get_class_all_info().keys())
 pass_flag = False
 
-# 图片格式白名单（自动预览）
+# 可在线预览的格式白名单
 IMG_EXT = {"jpg", "jpeg", "png", "gif"}
+VIDEO_EXT = {"mp4", "webm"}
 
 if len(class_list) == 0:
     st.error("暂无可用班级，请教师先创建班级")
@@ -58,13 +59,12 @@ else:
 if pass_flag and st.session_state.stu_name:
     st.divider()
 
-    # ========== 一、班级任务板块（修复分段格式+空值显示） ==========
+    # ========== 一、班级任务板块 ==========
     st.subheader("一、班级任务")
     task_list = get_class_tasks(st.session_state.stu_class)
     if len(task_list) == 0:
         st.info("暂无班级任务")
     else:
-        # 区分进行中/已截止
         now = datetime.datetime.now()
         doing_tasks = []
         end_tasks = []
@@ -85,21 +85,17 @@ if pass_flag and st.session_state.stu_name:
         for task in all_show_tasks:
             is_end = task in end_tasks
             with st.expander(f"📌 {task['task_title']} {'【已截止】' if is_end else ''}", expanded=False):
-                # 修复：截止时间空值不显示，避免出现 nan
                 caption_text = f"发布时间：{task['create_time']}"
                 deadline_val = task.get("deadline", "")
                 if deadline_val and pd.notna(deadline_val) and str(deadline_val).strip() != "":
                     caption_text += f" | 截止时间：{deadline_val}"
                 st.caption(caption_text)
 
-                # 修复：自动将普通换行转换为 Markdown 分段，保留排版格式
                 content_raw = task.get("task_content", "")
                 if content_raw and pd.notna(content_raw) and str(content_raw).strip() != "":
-                    # 将单个换行替换为两个换行，实现回车即分段
                     format_content = str(content_raw).replace("\n", "\n\n")
                     st.markdown(format_content)
 
-                # 空值安全判断附件
                 file_name_raw = task.get("file_name", "")
                 has_file = False
                 file_names = []
@@ -118,7 +114,6 @@ if pass_flag and st.session_state.stu_name:
                         show_name = fn.split("_", 1)[1] if "_" in fn else fn
 
                         if ext in IMG_EXT:
-                            # st.image(f_path, caption=show_name, use_column_width=True)  # use_column_width=True 是旧版写法
                             st.image(f_path, caption=show_name, use_container_width=True)
                         else:
                             with open(f_path, "rb") as fp:
@@ -131,8 +126,47 @@ if pass_flag and st.session_state.stu_name:
                             )
     st.divider()
 
-    # ========== 二、在线测试试卷列表 ==========
-    st.subheader("二、在线测试试卷列表")
+    # ========== 二、教学资源板块 ==========
+    st.subheader("二、教学资源")
+    res_list = get_class_resources(st.session_state.stu_class)
+    if len(res_list) == 0:
+        st.info("暂无本班教学资源")
+    else:
+        # 按分类分组展示
+        type_groups = {}
+        for r in res_list:
+            t = r["res_type"]
+            if t not in type_groups:
+                type_groups[t] = []
+            type_groups[t].append(r)
+
+        for res_type, items in type_groups.items():
+            st.markdown(f"#### {res_type}")
+            for r in items:
+                with st.expander(f"📂 {r['res_name']}", expanded=False):
+                    st.caption(f"上传时间：{r['create_time']}")
+                    f_path = os.path.join(RESOURCE_FILE_DIR, r["file_name"])
+                    ext = r["file_name"].split(".")[-1].lower()
+                    show_name = r["file_name"].split("_", 1)[1] if "_" in r["file_name"] else r["file_name"]
+
+                    if os.path.exists(f_path):
+                        if ext in IMG_EXT:
+                            st.image(f_path, caption=show_name, use_container_width=True)
+                        elif ext in VIDEO_EXT:
+                            st.video(f_path)
+                        # 所有格式都提供下载按钮
+                        with open(f_path, "rb") as fp:
+                            file_bytes = fp.read()
+                        st.download_button(
+                            label=f"📥 下载文件：{show_name}",
+                            data=file_bytes,
+                            file_name=show_name,
+                            use_container_width=True
+                        )
+    st.divider()
+
+    # ========== 三、在线测试试卷列表 ==========
+    st.subheader("三、在线测试试卷列表")
     paper_list = get_class_papers(st.session_state.stu_class)
     if len(paper_list) == 0:
         st.info("当前班级暂无可用试卷")

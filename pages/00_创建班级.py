@@ -1,11 +1,13 @@
 import streamlit as st
 import pandas as pd
 import os
-from data_tools import add_class, get_all_class, get_students_by_class, get_class_all_info, get_question_list, STUDENT_CSV, get_all_papers
-from data_tools import init_point_csv, get_class_point, add_class_point, add_group_all_point, get_class_group_map, set_student_group, get_group_point_stat
+from data_tools import add_class, get_all_class, get_students_by_class, get_class_all_info, get_question_list, \
+    STUDENT_CSV, get_all_papers
+from data_tools import init_point_csv, get_class_point, add_class_point, add_group_all_point, get_class_group_map, \
+    set_student_group, get_group_point_stat
+from data_tools import get_class_resources, RESOURCE_FILE_DIR
 
 st.set_page_config(page_title="班级管理", layout="centered", initial_sidebar_state="collapsed")
-
 # 初始化会话变量
 if "random_pick_stu" not in st.session_state:
     st.session_state["random_pick_stu"] = ""
@@ -18,6 +20,10 @@ st.divider()
 SCORE_CSV = "score_data.csv"
 ENCODING = "utf-8-sig"
 init_point_csv()
+
+# 可在线预览的格式白名单
+IMG_EXT = {"jpg", "jpeg", "png", "gif"}
+VIDEO_EXT = {"mp4", "webm"}
 
 # 1. 新建班级
 st.subheader("一、班级管理")
@@ -69,6 +75,7 @@ else:
         # ① 随机抽取1名学生
         if st.button("随机抽取组和学生", type="primary", use_container_width=True):
             import random
+
             pick_name = random.choice(stu_list)
             st.session_state["random_pick_stu"] = pick_name
             df_stu = pd.read_csv(STUDENT_CSV, encoding="utf-8-sig")
@@ -107,7 +114,7 @@ else:
             """, unsafe_allow_html=True)
 
         # ③单人加分、④小组下拉、⑤整组加分、⑥清空 四栏并排
-        col_c1, col_c2, col_c3, col_c4 = st.columns([2,2,2,2])
+        col_c1, col_c2, col_c3, col_c4 = st.columns([2, 2, 2, 2])
         with col_c1:
             picked = st.session_state["random_pick_stu"]
             if picked != "":
@@ -210,7 +217,8 @@ else:
             df_score = pd.read_csv(SCORE_CSV, encoding=ENCODING)
         class_score = pd.DataFrame()
         if not df_score.empty and "test_id" in df_score.columns:
-            class_score = df_score[(df_score["class_name"] == selected_class) & (df_score["test_id"] == select_test)].copy()
+            class_score = df_score[
+                (df_score["class_name"] == selected_class) & (df_score["test_id"] == select_test)].copy()
 
         if show_detail:
             st.divider()
@@ -229,10 +237,14 @@ else:
                 max_s = class_score["total_score"].max()
                 min_s = class_score["total_score"].min()
                 m1, m2, m3, m4 = st.columns(4)
-                with m1: st.metric("参与人数", total_num)
-                with m2: st.metric("平均分", avg)
-                with m3: st.metric("最高分", max_s)
-                with m4: st.metric("最低分", min_s)
+                with m1:
+                    st.metric("参与人数", total_num)
+                with m2:
+                    st.metric("平均分", avg)
+                with m3:
+                    st.metric("最高分", max_s)
+                with m4:
+                    st.metric("最低分", min_s)
 
                 st.subheader("成绩等级分布")
                 st.dataframe(class_score["level"].value_counts(), use_container_width=True)
@@ -245,7 +257,6 @@ else:
                     ans_col = f"user_ans_{qid}"
                     st.markdown(f"### 第{qid}题（满分{q['score']}分）")
                     st.write(f"题干：{q['title']}")
-                    # 判断题也显示选项
                     if q["type"] in ["single", "multi", "judge"]:
                         st.write(f"选项：{' | '.join(q['opts'])}")
                     std_ans_txt = "、".join(q["ans"]) if isinstance(q["ans"], list) else q["ans"]
@@ -258,21 +269,63 @@ else:
                         acc_rate = round(right_cnt / total_num * 100, 2)
                         st.write(f"本题平均分：{q_avg_score} | 答对{right_cnt}/{total_num} | 正确率{acc_rate}%")
 
-                        # 单选和判断题都做选项分布统计
                         if q["type"] in ["single", "judge"]:
-                            opt_count = {"A":0,"B":0,"C":0,"D":0}
+                            opt_count = {"A": 0, "B": 0, "C": 0, "D": 0}
                             if ans_col in class_score.columns:
                                 for a in class_score[ans_col].dropna():
                                     if a in opt_count:
                                         opt_count[a] += 1
-                            bar_df = pd.DataFrame({"选项":list(opt_count.keys()),"作答人数":list(opt_count.values())})
+                            bar_df = pd.DataFrame(
+                                {"选项": list(opt_count.keys()), "作答人数": list(opt_count.values())})
                             st.bar_chart(bar_df, x="选项", y="作答人数", height=240)
                         else:
-                            bar_df = pd.DataFrame({"结果":["答对","答错"],"人数":[right_cnt,wrong_cnt]})
+                            bar_df = pd.DataFrame({"结果": ["答对", "答错"], "人数": [right_cnt, wrong_cnt]})
                             st.bar_chart(bar_df, x="结果", y="人数", height=240)
                     else:
                         st.info("暂无该题作答数据")
                     st.divider()
+
+# ===================== 六、班级教学资源预览 =====================
+st.divider()
+st.subheader("六、班级教学资源")
+if not selected_class:
+    st.info("请先选择上方班级")
+else:
+    res_list = get_class_resources(selected_class)
+    if len(res_list) == 0:
+        st.info("该班级暂无分配的教学资源，请先在资源管理中上传并分配")
+    else:
+        # 按分类分组展示
+        type_groups = {}
+        for r in res_list:
+            t = r["res_type"]
+            if t not in type_groups:
+                type_groups[t] = []
+            type_groups[t].append(r)
+
+        for res_type, items in type_groups.items():
+            st.markdown(f"#### {res_type}")
+            for r in items:
+                with st.expander(f"📂 {r['res_name']}", expanded=False):
+                    st.caption(f"上传时间：{r['create_time']}")
+                    f_path = os.path.join(RESOURCE_FILE_DIR, r["file_name"])
+                    ext = r["file_name"].split(".")[-1].lower()
+                    show_name = r["file_name"].split("_", 1)[1] if "_" in r["file_name"] else r["file_name"]
+
+                    if os.path.exists(f_path):
+                        if ext in IMG_EXT:
+                            st.image(f_path, caption=show_name, use_container_width=True)
+                        elif ext in VIDEO_EXT:
+                            st.video(f_path)
+                        # 所有格式都提供下载按钮
+                        with open(f_path, "rb") as fp:
+                            file_bytes = fp.read()
+                        st.download_button(
+                            label=f"📥 下载文件：{show_name}",
+                            data=file_bytes,
+                            file_name=show_name,
+                            use_container_width=True
+                        )
 
 st.divider()
 st.page_link("pages/00_教师入口首页.py", label="← 教师入口首页", use_container_width=True)
