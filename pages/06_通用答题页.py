@@ -109,8 +109,15 @@ if not is_submit:
                     if sorted(ans) == sorted(std):
                         get_scr = q["score"]
             elif q["type"] == "fill":
-                if ans and str(ans).strip().lower() == str(std).strip().lower():
-                    get_scr = q["score"]
+                if ans:
+                    ans_clean = str(ans).strip().lower()
+                    std_clean = str(std).strip().lower()
+                    # 按 / 分割多个正确答案，自动去除空格
+                    std_list = [s.strip() for s in std_clean.split("/")]
+                    # 模糊匹配：学生答案包含任一正确答案，或正确答案包含学生答案，均判对
+                    is_right = any(s in ans_clean or ans_clean in s for s in std_list)
+                    if is_right:
+                        get_scr = q["score"]
 
             total += get_scr
             q_score_dict[f"q{qid}"] = get_scr
@@ -187,7 +194,11 @@ else:
         else:
             stu_txt = user_ans_raw if user_ans_raw else "未作答"
             std_txt = std_ans
-            right = str(user_ans_raw).strip().lower() == str(std_ans).strip().lower()
+            # 同步多答案判断逻辑，和判分保持一致
+            ans_clean = str(user_ans_raw).strip().lower() if user_ans_raw else ""
+            std_clean = str(std_ans).strip().lower()
+            std_list = [s.strip() for s in std_clean.split("/")]
+            right = ans_clean != "" and any(s in ans_clean or ans_clean in s for s in std_list)
 
         with st.container(border=True):
             st.subheader(f"第{qid}题（{q['score']}分） {'✅正确' if right else '❌错误'}")
