@@ -1,6 +1,23 @@
-.venv/
-.streamlit/
+# Python 缓存文件
 __pycache__/
 *.pyc
-.env
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# Streamlit 敏感密钥（绝对不能上传）
+.streamlit/secrets.toml
+
+# 运行自动生成的数据文件（可选，私有仓库可保留）
+*.csv
+*.db
+resource_files/
+task_files/
+
+# 系统临时文件
+Thumbs.db
+.DS_Store
 *.log
