@@ -31,5 +31,6 @@ st.page_link("pages/05_试卷管理.py", label="📚 试卷管理", use_containe
 st.page_link("pages/07_任务管理.py", label="📚 任务管理", use_container_width=True)
 st.page_link("pages/08_资源管理.py", label="📚 资源管理", use_container_width=True)
 st.page_link("pages/01_教师备课助手.py", label="📚 备课功能", use_container_width=True)
+st.page_link("pages/09_PPT生成.py", label="📚 PPT-生成", use_container_width=True)
 st.divider()
 st.page_link("Home.py", label="← 返回系统首页", use_container_width=True)
