@@ -26,8 +26,8 @@ API_BASE = ""
 MODEL_NAME = ""
 
 try:
-    if "DEEPSEEK_API_KEY" in st.secrets:
-        API_KEY = st.secrets["DEEPSEEK_API_KEY"]
+    if "deepseek_api_key" in st.secrets:
+        API_KEY = st.secrets["deepseek_api_key"]
         API_BASE = "https://api.deepseek.com/v1"
         MODEL_NAME = "deepseek-chat"
     elif "DASHSCOPE_API_KEY" in st.secrets:
