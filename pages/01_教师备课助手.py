@@ -65,10 +65,10 @@ class AILessonPlanner:
             st.error(f"AI接口初始化失败，请检查后台密钥配置：{str(e)}")
             st.stop()
     def _build_prompt(self, user_input):
-        return f"""你是中职专业课教师，撰写{user_input['grade']}{user_input['major']}《{user_input['topic']}》教案，硬性规则：
+        return f"""你是中职专业课教师，撰写{user_input['grade']}{user_input['major']}《{user_input['topic']}》教案，若为数学专业，主题内容为平面几何相关，则贴合苗族服饰案例来设计教案。硬性规则：
         1、**所有正文内容严禁出现任何字段文字（如xx值：、数字+字段名全部禁止写入正文），字段名只在每行开头用于分类，正文不能携带字段标识前缀**；
         2、课前、课后内容自由撰写无分段；课中教学内容、课中教师活动、课中学生活动都必须包含：
-        1）引入3min 2）探究8min 3）讲解10min 4）拓展10min 5）评价8min
+        1）引入4min 2）探究8min 3）讲解10min 4）拓展10min 5）评价8min
         所有内容合并为单独一行（禁止换行）；【强制字数+内容硬性要求，必须严格执行，严禁简写】
         课中教学内容：每个环节用20字左右精简概括核心知识点，控制在15-25字；
         课中教师活动：
