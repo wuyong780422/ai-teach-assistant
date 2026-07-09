@@ -127,11 +127,11 @@ if not is_submit:
                 ans_record[f"user_ans_{qid}"] = ans if ans else ""
 
         # 统一评级规则
-        if total >= 70:
+        if total >= 80:
             level = "优秀"
-        elif total >= 50:
+        elif total >= 70:
             level = "良好"
-        elif total >= 30:
+        elif total >= 60:
             level = "及格"
         else:
             level = "不及格"

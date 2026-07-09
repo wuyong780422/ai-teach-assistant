@@ -6,8 +6,14 @@ from data_tools import add_class, get_all_class, get_students_by_class, get_clas
 from data_tools import init_point_csv, get_class_point, add_class_point, add_group_all_point, get_class_group_map, \
     set_student_group, get_group_point_stat
 from data_tools import get_class_resources, RESOURCE_FILE_DIR
+from io import BytesIO
+import matplotlib.pyplot as plt
+from docx import Document
+from docx.shared import Inches, Pt, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 st.set_page_config(page_title="班级管理", layout="centered", initial_sidebar_state="collapsed")
+
 # 初始化会话变量
 if "random_pick_stu" not in st.session_state:
     st.session_state["random_pick_stu"] = ""
@@ -37,6 +43,7 @@ if st.button("确认创建班级", type="secondary"):
             st.success(f"创建成功！验证码：{msg}")
         else:
             st.error(msg)
+
 st.divider()
 
 # 2. 学生分组、抽选加分模块
@@ -70,12 +77,11 @@ else:
                     else:
                         col.button(name, use_container_width=True)
                     idx += 1
-        st.divider()
 
+        st.divider()
         # ① 随机抽取1名学生
         if st.button("随机抽取组和学生", type="primary", use_container_width=True):
             import random
-
             pick_name = random.choice(stu_list)
             st.session_state["random_pick_stu"] = pick_name
             df_stu = pd.read_csv(STUDENT_CSV, encoding="utf-8-sig")
@@ -143,8 +149,8 @@ else:
                 st.session_state["random_pick_stu"] = ""
                 st.session_state["pick_group"] = ""
                 st.rerun()
-        st.divider()
 
+        st.divider()
         # ⑦ 给学生分配小组
         st.subheader("给学生分配小组")
         c1, c2 = st.columns(2)
@@ -157,8 +163,8 @@ else:
                 st.rerun()
             else:
                 st.error(tip)
-        st.divider()
 
+        st.divider()
         # 个人积分排行榜
         st.subheader("三、学生个人积分排行榜（总分降序）")
         point_df = get_class_point(selected_class)
@@ -167,8 +173,8 @@ else:
         else:
             point_df = point_df.sort_values("total_point", ascending=False, ignore_index=True)
             st.dataframe(point_df, use_container_width=True)
-        st.divider()
 
+        st.divider()
         # 小组积分柱状图
         st.subheader("四、小组积分统计图表")
         group_stat = get_group_point_stat(selected_class)
@@ -184,11 +190,106 @@ else:
                 st.bar_chart(group_stat, x="小组", y="人均积分", height=320, use_container_width=True)
             st.dataframe(group_stat, use_container_width=True)
 
+# ========== 导出函数已提前移动到此处，保证调用前已定义 ==========
+# ========== 导出1：学生成绩明细 Excel（与页面表格完全一致） ==========
+def export_score_detail_excel(df, class_name, paper_name):
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
+        df.to_excel(writer, sheet_name="学生成绩明细", index=False)
+        ws = writer.sheets["学生成绩明细"]
+        # 表头加粗
+        for cell in ws[1]:
+            cell.font = cell.font.copy(bold=True)
+        # 自适应列宽
+        for col in ws.columns:
+            col_letter = col[0].column_letter
+            max_len = max(len(str(c.value)) for c in col if c.value)
+            ws.column_dimensions[col_letter].width = max_len * 1.2 + 2
+    output.seek(0)
+    return output
+
+# ========== 导出2：试卷分析报告 Word（与页面分析数据完全一致） ==========
+def export_paper_analysis_word(stat_data, segment_data, question_df, class_name, paper_name):
+    doc = Document()
+    # 标题
+    title = doc.add_heading(f"{class_name} - {paper_name} 试卷分析报告", level=1)
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    doc.add_paragraph(f"生成时间：{pd.Timestamp.now().strftime('%Y-%m-%d %H:%M')}").alignment = WD_ALIGN_PARAGRAPH.CENTER
+    doc.add_paragraph()
+    # 一、整体情况总览
+    doc.add_heading("一、考试整体情况", level=2)
+    table = doc.add_table(rows=1, cols=6)
+    table.style = "Table Grid"
+    hdr_cells = table.rows[0].cells
+    headers = ["参考人数", "平均分", "最高分", "最低分", "及格率", "优秀率"]
+    for i, h in enumerate(headers):
+        hdr_cells[i].text = h
+        hdr_cells[i].paragraphs[0].runs[0].bold = True
+    row_cells = table.add_row().cells
+    row_cells[0].text = str(stat_data["total_count"])
+    row_cells[1].text = f"{stat_data['avg_score']:.2f}"
+    row_cells[2].text = f"{stat_data['max_score']:.0f}"
+    row_cells[3].text = f"{stat_data['min_score']:.0f}"
+    row_cells[4].text = f"{stat_data['pass_rate']:.1f}%"
+    row_cells[5].text = f"{stat_data['excellent_rate']:.1f}%"
+    doc.add_paragraph()
+    # 二、分数段分布（内嵌柱状图）
+    doc.add_heading("二、分数段人数分布", level=2)
+    # 解决中文乱码
+    plt.rcParams["font.sans-serif"] = ["Microsoft YaHei", "SimHei"]
+    plt.rcParams["axes.unicode_minus"] = False
+    fig, ax = plt.subplots(figsize=(6, 3.5))
+    segments = list(segment_data.keys())
+    counts = list(segment_data.values())
+    bars = ax.bar(segments, counts, color="#165DFF")
+    ax.set_title("各分数段人数分布", fontsize=12)
+    ax.set_ylabel("人数", fontsize=10)
+    ax.set_xlabel("分数段", fontsize=10)
+    for bar in bars:
+        height = bar.get_height()
+        ax.text(bar.get_x() + bar.get_width()/2., height,
+                f"{int(height)}", ha="center", va="bottom", fontsize=9)
+    plt.tight_layout()
+    img_buf = BytesIO()
+    plt.savefig(img_buf, format="png", dpi=150)
+    img_buf.seek(0)
+    plt.close()
+    doc.add_picture(img_buf, width=Inches(5.5))
+    doc.add_paragraph()
+    # 三、逐题质量分析
+    doc.add_heading("三、逐题质量分析", level=2)
+    q_table = doc.add_table(rows=1, cols=4)
+    q_table.style = "Table Grid"
+    q_hdr = q_table.rows[0].cells
+    q_headers = ["题号", "题型", "分值", "全班正确率"]
+    for i, h in enumerate(q_headers):
+        q_hdr[i].text = h
+        q_hdr[i].paragraphs[0].runs[0].bold = True
+    for _, row in question_df.iterrows():
+        row_cells = q_table.add_row().cells
+        row_cells[0].text = str(row["题号"])
+        row_cells[1].text = str(row["题型"])
+        row_cells[2].text = str(row["分值"])
+        row_cells[3].text = f"{row['正确率']:.1f}%"
+        # 正确率低于60%自动标红，和页面高亮逻辑一致
+        if row["正确率"] < 60:
+            run = row_cells[3].paragraphs[0].runs[0]
+            run.font.color.rgb = RGBColor(255, 0, 0)
+            run.bold = True
+    doc.add_paragraph()
+    doc.add_heading("四、教学反思与改进措施", level=2)
+    doc.add_paragraph("________________________________________________________________")
+    doc.add_paragraph("________________________________________________________________")
+    doc.add_paragraph("________________________________________________________________")
+    output = BytesIO()
+    doc.save(output)
+    output.seek(0)
+    return output
+
 # ===================== 五、班级试卷成绩分析 =====================
 st.divider()
 st.subheader("五、班级试卷成绩分析")
 paper_list = get_all_papers()
-
 if len(paper_list) == 0:
     st.info("暂无可用试卷，请先在试卷管理中创建试卷")
 else:
@@ -199,7 +300,6 @@ else:
         format_func=lambda x: paper_map[x]
     )
     q_list = get_question_list(select_test)
-
     if not selected_class:
         st.info("请先选择上方班级")
     elif len(q_list) == 0:
@@ -220,6 +320,7 @@ else:
             class_score = df_score[
                 (df_score["class_name"] == selected_class) & (df_score["test_id"] == select_test)].copy()
 
+        # 成绩明细 + 新增Excel导出按钮
         if show_detail:
             st.divider()
             st.subheader("本班试卷成绩明细")
@@ -227,7 +328,17 @@ else:
                 st.warning("暂无学生提交该试卷")
             else:
                 st.dataframe(class_score, use_container_width=True)
+                # 新增：导出成绩明细Excel
+                excel_file = export_score_detail_excel(class_score, selected_class, paper_map[select_test])
+                st.download_button(
+                    label="📥 导出成绩明细 Excel",
+                    data=excel_file,
+                    file_name=f"{selected_class}_{paper_map[select_test]}_成绩明细.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
 
+        # 统计分析 + 新增Word导出按钮
         if show_stat:
             if class_score.empty:
                 st.warning("暂无提交数据")
@@ -236,6 +347,30 @@ else:
                 avg = round(class_score["total_score"].mean(), 2)
                 max_s = class_score["total_score"].max()
                 min_s = class_score["total_score"].min()
+
+                # 新增：计算及格率、优秀率，整理统计数据
+                pass_count = len(class_score[class_score["total_score"] >= 60])
+                pass_rate = round(pass_count / total_num * 100, 2)
+                excellent_count = len(class_score[class_score["total_score"] >= 90])
+                excellent_rate = round(excellent_count / total_num * 100, 2)
+                stat_data = {
+                    "total_count": total_num,
+                    "avg_score": avg,
+                    "max_score": max_s,
+                    "min_score": min_s,
+                    "pass_rate": pass_rate,
+                    "excellent_rate": excellent_rate
+                }
+
+                # 新增：计算分数段分布
+                bins = [0, 60, 70, 80, 90, 101]
+                seg_labels = ["0-59分", "60-69分", "70-79分", "80-89分", "90-100分"]
+                class_score["score_segment"] = pd.cut(class_score["total_score"], bins=bins, labels=seg_labels, right=False)
+                segment_data = class_score["score_segment"].value_counts().sort_index().to_dict()
+
+                # 新增：初始化逐题统计列表
+                question_stat_list = []
+
                 m1, m2, m3, m4 = st.columns(4)
                 with m1:
                     st.metric("参与人数", total_num)
@@ -269,6 +404,14 @@ else:
                         acc_rate = round(right_cnt / total_num * 100, 2)
                         st.write(f"本题平均分：{q_avg_score} | 答对{right_cnt}/{total_num} | 正确率{acc_rate}%")
 
+                        # 新增：收集逐题统计数据
+                        question_stat_list.append({
+                            "题号": qid,
+                            "题型": q["type"],
+                            "分值": q["score"],
+                            "正确率": acc_rate
+                        })
+
                         if q["type"] in ["single", "judge"]:
                             opt_count = {"A": 0, "B": 0, "C": 0, "D": 0}
                             if ans_col in class_score.columns:
@@ -283,7 +426,25 @@ else:
                             st.bar_chart(bar_df, x="结果", y="人数", height=240)
                     else:
                         st.info("暂无该题作答数据")
+                        # 新增：无作答数据时也记录
+                        question_stat_list.append({
+                            "题号": qid,
+                            "题型": q["type"],
+                            "分值": q["score"],
+                            "正确率": 0
+                        })
                     st.divider()
+
+                # 新增：生成逐题DataFrame + 导出Word报告按钮
+                question_df = pd.DataFrame(question_stat_list)
+                word_file = export_paper_analysis_word(stat_data, segment_data, question_df, selected_class, paper_map[select_test])
+                st.download_button(
+                    label="📥 导出试卷分析报告 Word",
+                    data=word_file,
+                    file_name=f"{selected_class}_{paper_map[select_test]}_试卷分析报告.docx",
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                    use_container_width=True
+                )
 
 # ===================== 六、班级教学资源预览 =====================
 st.divider()
@@ -302,7 +463,6 @@ else:
             if t not in type_groups:
                 type_groups[t] = []
             type_groups[t].append(r)
-
         for res_type, items in type_groups.items():
             st.markdown(f"#### {res_type}")
             for r in items:
@@ -311,7 +471,6 @@ else:
                     f_path = os.path.join(RESOURCE_FILE_DIR, r["file_name"])
                     ext = r["file_name"].split(".")[-1].lower()
                     show_name = r["file_name"].split("_", 1)[1] if "_" in r["file_name"] else r["file_name"]
-
                     if os.path.exists(f_path):
                         if ext in IMG_EXT:
                             st.image(f_path, caption=show_name, use_container_width=True)
