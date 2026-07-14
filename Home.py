@@ -1,14 +1,15 @@
-# 中职教学智能辅助系统  streamlit run Home.py
+# 民族地区中职数学 “文化 - 技术” 融合教学智能体  streamlit run Home.py
 import streamlit as st
 
 st.set_page_config(
-    page_title="教学智能助手",
+    page_title="教学智能体",
     layout="centered",
     initial_sidebar_state="collapsed"
 )
 
 st.markdown("""
-<h1 style="text-align:center; color:#2c5282; margin-top:2px; margin-bottom:5px; font-size:32px;">民族地区中职数学“文化-技术”融合教学</h1>
+<h1 style="text-align:center; color:#2c5282; margin-top:2px; margin-bottom:5px; font-size:32px;">面向中职数学 “文化 - 技术” 融合的教学智能体
+</h1>
 """, unsafe_allow_html=True)
 st.divider()
 
@@ -35,6 +36,6 @@ st.markdown("<br><br>", unsafe_allow_html=True)
 # 底部备注
 st.markdown("""
 <div style="text-align:center; font-size:15px; color:#666; border-top:1px solid #eee; padding-top:20px;text-align:center;">
-课题联系人：吴勇
+课题联系人：XX老师
 </div>
 """, unsafe_allow_html=True)
